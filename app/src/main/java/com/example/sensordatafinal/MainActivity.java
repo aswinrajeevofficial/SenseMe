@@ -175,12 +175,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        // The sensor type (as defined in the Sensor class).
+        
         int sensorType = event.sensor.getType();
 
-        // The new data value of the sensor.  Both the light and proximity
-        // sensors report one value at a time, which is always the first
-        // element in the values array.
         float currentValue = event.values[0];
 
         switch (sensorType) {
