@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">SensorDataFinal</string>
+    <string name="label_proximity">Proximity Sensor: %1$.2f</string>
+    <string name="label_light">Light Sensor: %1$.2f</string>
+    <string name="label_magneto">Magneto Meter: %1$.2f</string>
+    <string name="label_orientation">Orientation Sensor: %1$.2f</string>
+    <string name="label_gravity">Gravity Sensor: %1$.2f</string>
+    <string name="label_linearacc">Linear Acceleration Sensor: %1$.2f</string>
+    <string name="label_stepdetector">Step Detector: %1$.2f</string>
+    <string name="label_stepcounter">Step Counter: %1$.2f</string>
+    <string name="label_motiondetect">Motion Detector: %1$.2f</string>
+    <string name="error_no_sensor">No sensor</string>
+</resources>
