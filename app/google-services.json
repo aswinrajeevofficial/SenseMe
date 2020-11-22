@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "45259936020",
+    "firebase_url": "https://senseme-b500e.firebaseio.com",
+    "project_id": "senseme-b500e",
+    "storage_bucket": "senseme-b500e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45259936020:android:caa62913a37caca2ae7201",
+        "android_client_info": {
+          "package_name": "com.example.sensordatafinal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "45259936020-1rfeurvgh906j77hgpr2n1ejspr5f793.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDg_H4BIRk1o7WYFgXmYYDfERRcfNxPkhQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "45259936020-1rfeurvgh906j77hgpr2n1ejspr5f793.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

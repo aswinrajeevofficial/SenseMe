@@ -4,276 +4,131 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import android.text.format.DateFormat;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
+
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
-
-    //SensorManager object containing all the sensor services
-    private SensorManager sensorManager;
-    //Individual sensor objects
-    private Sensor light;
-
-    /* List of other sensors available for future enhancement
-    private Sensor proximity;
-    private Sensor magneto;
-    private Sensor orientation;
-    private Sensor gravity;
-    private Sensor linearAcceleration;
-    private Sensor stepCount;
-    private Sensor stepDetector;
-    */
-    // TextViews to display current sensor values
-    private TextView lightText;
-
-    /*Text views for remaining sensors
-    private TextView proximityText;
-    private TextView magnetoText;
-    private TextView orientationText;
-    private TextView gravityText;
-    private TextView linearAccelerationText;
-    private TextView stepCountText;
-    private TextView stepDetectorText;
-    */
+public class MainActivity extends AppCompatActivity{
 
     private FileWriter writer;
+    private StorageReference storageRef;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //Writing Log to filesystem
-        if (isStoragePermissionGrated()) {
-            try {
-                createLogFile();
-            } catch (IOException e) {
-                e.printStackTrace();
+
+        Button buttonOne = findViewById(R.id.buttonOne);
+        Button buttonTwo = findViewById(R.id.buttonTwo);
+
+        buttonOne.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                System.out.println("Relay Sensor Data Clicked");
+                Intent sensorActivity = new Intent(getApplicationContext(), SensorActivity.class);
+                startActivity(sensorActivity);
             }
-        }else {
-            requestForStoragePermission();
-        }
+        });
+        RequestQueue queue = Volley.newRequestQueue(this);
+        buttonTwo.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                System.out.println("Get Open Data Clicked");
 
-        // Get the sensor service and retrieve the list of sensors.
-        sensorManager =
-                (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+                SimpleDateFormat sdf = new SimpleDateFormat("EEEE");
+                Date d = new Date();
+                String day = (String) DateFormat.format("dd",   d); // 20
+                String monthNumber = (String) DateFormat.format("MM",   d); // 06
+                String year = (String) DateFormat.format("yyyy", d); // 2013
+                String hour = (String) DateFormat.format("HH", d);
+                String minute = (String) DateFormat.format("mm", d);
+                String seconds = (String) DateFormat.format("ss", d);
+                System.out.println(day + " " + monthNumber + " " + " " + year + " " + hour + ":" + minute + ":" + seconds);
+                String fileName = "open_data" + year + monthNumber + day + hour + minute + seconds + ".json";
+                String url ="https://api.data.gov.sg/v1/environment/air-temperature?" + year + "-" + monthNumber + "-" + day + "T" + hour + ":" + minute + ":" + seconds;
+                // prepare the Request
+                JsonObjectRequest getRequest = new JsonObjectRequest(Request.Method.GET, url, null,
+                        new Response.Listener<JSONObject>()
+                        {
+                            @Override
+                            public void onResponse(JSONObject response) {
+                                // display response
+                                Log.d("Response", response.toString());
+                                try {
+                                    writer = new FileWriter(new File(Environment.getExternalStorageDirectory(), fileName));
+                                    writer.write(response.toString());
+                                    writer.close();
+                                    Toast.makeText(getApplicationContext(), "Open data saved", Toast.LENGTH_LONG).show();
+                                    storageRef = FirebaseStorage.getInstance().getReference();
+                                    Uri file = Uri.fromFile(new File(Environment.getExternalStorageDirectory(),fileName));
+                                    StorageReference toUpload = storageRef.child(fileName);
 
-        lightText = (TextView) findViewById(R.id.label_light);
-
-        /*
-        proximityText = (TextView) findViewById(R.id.label_proximity);
-        magnetoText = (TextView) findViewById(R.id.label_magneto);
-        gravityText = (TextView) findViewById(R.id.label_gravity);
-        linearAccelerationText = (TextView) findViewById(R.id.label_linearacc);
-        orientationText = (TextView) findViewById(R.id.label_orientation);
-        stepCountText = (TextView) findViewById(R.id.label_stepcounter);
-        stepDetectorText = (TextView) findViewById(R.id.label_stepdetector);
-        */
-        light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
-        /*
-        proximity = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
-        gravity = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        linearAcceleration = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        stepCount = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
-        stepDetector = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
-        magneto = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        orientation = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
-        */
-
-        String sensor_error = getResources().getString(R.string.error_no_sensor);
-        if (light == null) {
-            lightText.setText(sensor_error);
-        }
-        /*
-        if (mSensorProximity == null) {
-            mTextSensorProximity.setText(sensor_error);
-        }
-        if (mSensorGravity == null) {
-            mTextGravitySensor.setText(sensor_error);
-        }
-        if (mSensorLinearAcc == null) {
-            mTextLinearAcceleration.setText(sensor_error);
-        }
-        if (mSensorStepCount == null) {
-            mTextStepCounter.setText(sensor_error);
-        }
-        if (mSensorStepDetector == null) {
-            mTextStepDetector.setText(sensor_error);
-        }
-        if (mSensorOrientation == null) {
-            mTextOrientationSensor.setText(sensor_error);
-        }
-        if (mSensorMagneto == null) {
-            mTextMagnetoMeter.setText(sensor_error);
-        }
-         */
-    }
-
-    private void requestForStoragePermission() {
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
-    }
-
-    private boolean isStoragePermissionGrated() {
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
-            return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
-        } else {
-            return true;
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-            try {
-                createLogFile();
-            } catch (IOException e) {
-                e.printStackTrace();
+                                    toUpload.putFile(file)
+                                            .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                                @Override
+                                                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                                    System.out.println("File uploaded successfully");
+                                                    Toast.makeText(getApplicationContext(),"Open data uploaded to Firebase successfully",Toast.LENGTH_LONG).show();
+                                                }
+                                            })
+                                            .addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception exception) {
+                                                    Toast.makeText(getApplicationContext(),"Open data was not uploaded to Firebase successfully",Toast.LENGTH_LONG).show();
+                                                }
+                                            });
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        },
+                        new Response.ErrorListener()
+                        {
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+                                Log.d("Error.Response", error.toString());
+                            }
+                        }
+                );
+                // add it to the RequestQueue
+                queue.add(getRequest);
             }
-        }
-    }
-
-    private void createLogFile() throws IOException {
-        // create app folder
-        File appDirectory = new File(Environment.getExternalStorageDirectory().toString(), "SensorData");
-        System.out.println(appDirectory);
-        if (!appDirectory.exists()) {
-            System.out.println("Logs directory does not exist, creating new");
-            appDirectory.mkdir();
-        }
-
-        // create log folder
-        File logDirectory = new File(appDirectory, "Logs");
-        if (!logDirectory.exists()) {
-            System.out.println("Logs directory does not exist, creating new");
-            logDirectory.mkdir();
-        }
-        writer = new FileWriter(new File(Environment.getExternalStorageDirectory(), "sensors_" + System.currentTimeMillis() + ".csv"));
-        File logFile = new File(logDirectory, "logcat_" + System.currentTimeMillis() + ".csv");
-//        try {
-//            Process process = Runtime.getRuntime().exec("logcat -c");
-//            process = Runtime.getRuntime().exec("logcat -f " + logFile);
-//        } catch ( IOException e ) {
-//            e.printStackTrace();
-//        }
-        System.out.println(logFile);
-
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        
-        int sensorType = event.sensor.getType();
-
-        float currentValue = event.values[0];
-
-        switch (sensorType) {
-            case Sensor.TYPE_LIGHT:
-                lightText.setText(getResources().getString(R.string.label_light, currentValue));
-                Log.i("Light Sensor", String.valueOf(currentValue));
-                try {
-                    writer.write(String.format("%d, LIGHT, %f\n", event.timestamp, event.values[0], event.values[1]));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                break;
-            /*
-            case Sensor.TYPE_PROXIMITY:
-                proximityText.setText(getResources().getString(R.string.label_proximity, currentValue));
-                Log.i("Proximity Sensor", String.valueOf(currentValue));
-                break;
-            case Sensor.TYPE_GRAVITY:
-                gravityText.setText(getResources().getString(R.string.label_proximity, currentValue));
-                Log.i("Gravity Sensor", String.valueOf(currentValue));
-                break;
-            case Sensor.TYPE_LINEAR_ACCELERATION:
-                linearAccelerationText.setText(getResources().getString(R.string.label_linearacc, currentValue));
-                Log.i("Linear Acceleration", String.valueOf(currentValue));
-                break;
-            case Sensor.TYPE_STEP_COUNTER:
-                stepCountText.setText(getResources().getString(R.string.label_stepcounter, currentValue));
-                Log.i("Step Counter", String.valueOf(currentValue));
-                break;
-            case Sensor.TYPE_STEP_DETECTOR:
-                stepDetectorText.setText(getResources().getString(R.string.label_stepdetector, currentValue));
-                Log.i("Step Detector", String.valueOf(currentValue));
-                break;
-            case Sensor.TYPE_MAGNETIC_FIELD:
-                magnetoText.setText(getResources().getString(R.string.label_magneto, currentValue));
-                Log.i("Magnetometer", String.valueOf(currentValue));
-                break;
-            case Sensor.TYPE_ORIENTATION:
-                orientationText.setText(getResources().getString(
-                        R.string.label_orientation, currentValue));
-                Log.i("Motion Detector", String.valueOf(currentValue));
-                break;
-            */
-            default:
-                // do nothing
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        if (light != null) {
-            sensorManager.registerListener(this, light,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        /*
-        if (proximity != null) {
-            sensorManager.registerListener(this, proximity,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        if (orientation != null) {
-            sensorManager.registerListener(this, orientation,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        if (gravity != null) {
-            sensorManager.registerListener(this, gravity,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        if (linearAcceleration != null) {
-            sensorManager.registerListener(this, linearAcceleration,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        if (stepDetector != null) {
-            sensorManager.registerListener(this, stepDetector,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        if (stepCount != null) {
-            sensorManager.registerListener(this, stepCount,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        }
-        if (magneto != null) {
-            sensorManager.registerListener(this, magneto,
-                    SensorManager.SENSOR_DELAY_NORMAL);
-        }
-         */
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        sensorManager.unregisterListener(this);
+        });
     }
 
 }
